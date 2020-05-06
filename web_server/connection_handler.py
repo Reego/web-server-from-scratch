@@ -7,8 +7,6 @@ def handle_connection(client_connection):
 
 	req = HttpRequest(pre_parsed_request.decode())
 
-
 	response = HttpResponse(req, body='Hello, world!')
 
-	print(str(response))
 	client_connection.sendall(response.bytes)
