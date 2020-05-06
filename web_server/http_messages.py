@@ -25,16 +25,17 @@ class HttpResponse:
 
 	DEFAULT_HEADERS = {}
 
-	def __init__(self, request, headers={}, http_status=HTTPStatus.OK, body=''):
+	def __init__(self, request, headers={}, status=HTTPStatus.OK, body=''):
 
 		self.headers = headers
 
-		self.status = http_status
+		self.status = status
 
 		self.body = body
 
 		if self.body:
 			self.headers['Content-Length'] = len(self.body)
+			self.headers['Content-Type'] = 'text/html'
 
 
 	def __str__(self):
