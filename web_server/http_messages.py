@@ -1,6 +1,8 @@
 from http import HTTPStatus
 from itertools import islice
 
+PUBLIC_FOLDER_REL_PATH = './public'
+
 class HttpRequest:
 
 	def __init__(self, request):
@@ -25,23 +27,22 @@ class HttpResponse:
 
 	DEFAULT_HEADERS = {}
 
-	def __init__(self, request, headers={}, http_status=HTTPStatus.OK, body=''):
+	def __init__(self, request, content, headers={}, status=HTTPStatus.OK):
 
 		self.headers = headers
 
-		self.status = http_status
+		self.status = status
 
-		self.body = body
+		self.body = content.body
 
 		if self.body:
-			self.headers['Content-Length'] = len(self.body)
+			self.headers.update(content.get_headers())
 
 
 	def __str__(self):
 		headers_text = '\n'.join([f'{key}: {value}' for key, value in self.headers.items()])
 
-		return f"""
-HTTP/1.1 {self.status.phrase} {self.status.value}
+		return f"""HTTP/1.1 {self.status.value} {self.status.phrase}
 {headers_text}
 
 {self.body}"""
@@ -51,4 +52,5 @@ HTTP/1.1 {self.status.phrase} {self.status.value}
 
 	@property
 	def bytes(self):
-		return str(self).encode()
+		res = str(self)
+		return res.encode()
