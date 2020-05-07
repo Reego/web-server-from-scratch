@@ -1,6 +1,8 @@
 from http import HTTPStatus
 from itertools import islice
 
+PUBLIC_FOLDER_REL_PATH = './public'
+
 class HttpRequest:
 
 	def __init__(self, request):
@@ -25,7 +27,7 @@ class HttpResponse:
 
 	DEFAULT_HEADERS = {}
 
-	def __init__(self, request, content, headers={}, status=HTTPStatus.):
+	def __init__(self, request, content, headers={}, status=HTTPStatus.OK):
 
 		self.headers = headers
 
