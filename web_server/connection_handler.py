@@ -1,9 +1,11 @@
 import os
+from pathlib import Path
 from http import HTTPStatus
 
 from .http_messages import HttpRequest, HttpResponse
+from .content import HttpContent
 
-PUBLIC_FOLDER = 'public'
+PUBLIC_FOLDER_REL_PATH = './public'
 
 def handle_connection(client_connection):
 	"""handles the socket connection"""
@@ -12,30 +14,31 @@ def handle_connection(client_connection):
 
 	req = HttpRequest(pre_parsed_request.decode())
 
-	body, status = try_get_resource(req.path)
+	content, status = try_get_resource(req.path)
 
-	response = HttpResponse(req, body=body, status=status)
+	response = HttpResponse(req, content=content, status=status)
 
 	client_connection.sendall(response.bytes)
 
-def try_get_resource(path):
+def try_get_resource(requested_path):
 	"""retrieves the resource associated with the path"""
 	"""returns a string, HTTPStatus tuple"""
 
 	body = ''
 	status = HTTPStatus.OK
 
-	relative_path = path[1:]
-	final_rel_path = os.path.join(PUBLIC_FOLDER, relative_path)
+	base_dir = Path(PUBLIC_FOLDER_REL_PATH)
+	target_path = base_dir / Path(requested_path[1:])
+	target_path.resolve()
 
-	final_abs_path = os.path.join(
-			os.getcwd(),
-			final_rel_path
-	)
+	if target_path in base_dir:
+		if target_path.suffix == '':
+			target_path = target_path.with_suffix('.html')
 
-	if not os.path.isdir(final_abs_path) and os.path.exists(final_abs_path):
-		with open(final_rel_path) as f:
-			return f.read(), status
+		if target_path.is_file:
+			with target_path.open() as f:
+				return HttpContent(f.read(), target_path.suffix), status
 
-	print(f'404 at {final_rel_path}')
-	return '404: File not found', HTTPStatus.NOT_FOUND
+		return HttpContent('404: File not found'), HTTPStatus.NOT_FOUND
+
+	return HttpContent('500: Something went wrong...'), HTTPStatus.INTERNAL
