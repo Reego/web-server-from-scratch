@@ -42,8 +42,7 @@ class HttpResponse:
 	def __str__(self):
 		headers_text = '\n'.join([f'{key}: {value}' for key, value in self.headers.items()])
 
-		return f"""
-HTTP/1.1 {self.status.phrase} {self.status.value}
+		return f"""HTTP/1.1 {self.status.value} {self.status.phrase}
 {headers_text}
 
 {self.body}"""
@@ -53,4 +52,5 @@ HTTP/1.1 {self.status.phrase} {self.status.value}
 
 	@property
 	def bytes(self):
-		return str(self).encode()
+		res = str(self)
+		return res.encode()

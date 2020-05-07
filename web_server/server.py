@@ -12,26 +12,27 @@ PUBLIC_FOLDER_REL_PATH = './public'
 
 class HttpServer:
 
-	def __init__(self, addr='127.0.0.1', port=8000, intermediate_func=None):
+	def __init__(self, addr='127.0.0.1', port=8000):
 		self.addr = addr
 		self.port = port
+		self.sock = None
 
-		self.sock = socket.socket()
-
-		self.intermediate_func = intermediate_func
-
-	def run(self):
+	def start(self):
 		"""Starts the server"""
 
+		self.sock = socket.socket()
 		self.sock.bind((ADDR, PORT))
 		self.sock.listen()
 
-		while True:
+		while self.sock:
 			client_connection, client = self.sock.accept()
 			self.handle_connection(client_connection)
 			client_connection.close()
 
-		self.sock.close()
+	def stop(self):
+		if self.sock:
+			self.sock.close()
+			self.sock = None
 
 	def handle_connection(self, client_connection):
 		"""handles the socket connection"""

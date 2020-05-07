@@ -1,7 +1,7 @@
 FILE_EXTENSION_TO_MIME = {
-	'html': 'text/css',
-	'css': 'text/css',
-	'json': 'application/json',
+	'.html': 'text/html',
+	'.css': 'text/css',
+	'.json': 'application/json',
 }
 
 class HttpContent:
