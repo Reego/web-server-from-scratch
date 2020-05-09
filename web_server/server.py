@@ -1,4 +1,4 @@
-import os
+import os, sys, traceback
 import socket
 from http import HTTPStatus
 from pathlib import Path
@@ -18,28 +18,29 @@ class HttpServer:
 		self.timeout = timeout
 		self.application = application
 
-	def start(self):
+	def run(self):
 		"""Starts the server"""
 
 		self.sock = socket.socket()
 		self.sock.bind((ADDR, PORT))
 		self.sock.listen(self.timeout)
 
-		while self.sock:
-			client_connection, client = self.sock.accept()
-			self.handle_connection(client_connection)
-			client_connection.close()
-
-	def stop(self):
-		if self.sock:
+		try:
+			while True:
+				client_connection, client = self.sock.accept()
+				self.handle_connection(client_connection)
+				client_connection.close()
+		except KeyboardInterrupt:
 			self.sock.close()
-			self.sock = None
-
+		except Exception:
+			traceback.print_exc(file=sys.stdout)
+		sys.exit(0)
+		
 	# called in pool
 	def handle_connection(self, client_connection):
 		"""handles the socket connection"""
 
-		http_connection = HttpConnection(client_connection, self)
+		http_connection = HttpConnection(client_connection)
 
 		# to maintain reference to http_connection
 
@@ -49,7 +50,7 @@ class HttpServer:
 			return lambda body_data: self.send_response(http_connection, body_data)
 
 		if self.application:
-			http_connection.set_response_content(self.application(http_connection.environ, start_response))
+			http_connection.content.extend(self.application(http_connection.get_environ(self), start_response))
 		else:
 			resource, is_requested_resource = HttpResource.get_resource(PUBLIC_FOLDER_REL_PATH, http_connection.path)
 			if not is_requested_resource:

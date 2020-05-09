@@ -1,6 +1,8 @@
 from http import HTTPStatus
 from itertools import islice
 
+from .utils import status_phrase
+
 FILE_EXTENSION_TO_MIME = {
 	'.html': 'text/html',
 	'.css': 'text/css',
@@ -9,7 +11,7 @@ FILE_EXTENSION_TO_MIME = {
 
 class HttpConnection:
 
-	def __init__(self, client_connection, server):
+	def __init__(self, client_connection):
 
 		self.client_connection = client_connection
 
@@ -63,7 +65,7 @@ class HttpConnection:
 			('CONTENT_LENGTH', self.request_headers.get('Content-Length', '')),
 		]
 
-		for variable_name, variable_value in self.http_variables.items:
+		for variable_name, variable_value in self.http_variables.items():
 			environ.append((variable_name), (variable_value))
 
 		return environ
@@ -71,11 +73,10 @@ class HttpConnection:
 	def update_response_upper_text(self):
 		headers_text = '\n'.join([f'{header_label}: {header_value}'] for header_label, header_value in self.response_headers)
 
-		self.response_upper_text = f'HTTP/1.1 {self.status.value} {self.status.phrase}\n{headers_text}'	
+		self.response_upper_text = f'HTTP/1.1 {status_phrase(self.status)}\n{headers_text}'	
 
 	def send(self, body):
 		http_response = f'{self.response_upper_text}\n{body}'.encode()
 
 		self.client_connection.send(http_response)
 
-		
