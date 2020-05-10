@@ -7,34 +7,43 @@ from .http_connection import HttpConnection
 from .resource import HttpResource
 
 ADDR, PORT = '127.0.0.1', 5000
-PUBLIC_FOLDER_REL_PATH = './public'
 
 class HttpServer:
 
-	def __init__(self, addr='127.0.0.1', port=8000, timeout=5000, application=None):
+	def __init__(self, addr=ADDR, port=PORT, public_folder_path='/', timeout=5000, application=None):
 		self.addr = addr
 		self.port = port
+		self.public_folder_path = public_folder_path
 		self.sock = None
 		self.timeout = timeout
 		self.application = application
 
-	def run(self):
+	def run(self, callback=None):
 		"""Starts the server"""
 
 		self.sock = socket.socket()
-		self.sock.bind((ADDR, PORT))
-		self.sock.listen(self.timeout)
+		self.sock.bind((self.addr, self.port))
+		self.sock.settimeout(self.timeout)
+		self.sock.listen()
+
+		print(f'HTTP Server listening on {self.addr}:{self.port}...')
 
 		try:
-			while True:
+			while self.sock:
 				client_connection, client = self.sock.accept()
-				self.handle_connection(client_connection)
+				http_connection = self.handle_connection(client_connection)
 				client_connection.close()
+				if callback:
+					callback(self, http_connection)
 		except KeyboardInterrupt:
 			self.sock.close()
 		except Exception:
 			traceback.print_exc(file=sys.stdout)
 		sys.exit(0)
+
+	def stop(self):
+		self.sock.close()
+		self.sock = None
 		
 	# called in pool
 	def handle_connection(self, client_connection):
@@ -52,7 +61,7 @@ class HttpServer:
 		if self.application:
 			http_connection.content.extend(self.application(http_connection.get_environ(self), start_response))
 		else:
-			resource, is_requested_resource = HttpResource.get_resource(PUBLIC_FOLDER_REL_PATH, http_connection.path)
+			resource, is_requested_resource = HttpResource.get_resource(self.public_folder_path, http_connection.path)
 			if not is_requested_resource:
 				http_connection.status = HTTPStatus.NOT_FOUND
 			http_connection.set_resource(resource)
@@ -62,6 +71,8 @@ class HttpServer:
 
 		for body_segment in http_connection.content:
 			self.send_response(http_connection, body_segment)
+
+		return http_connection
 
 	def send_response(self, http_connection, body):
 
