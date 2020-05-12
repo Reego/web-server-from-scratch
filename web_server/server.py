@@ -23,23 +23,24 @@ class HttpServer:
 
 		self.sock = socket.socket()
 		self.sock.bind((self.addr, self.port))
-		self.sock.settimeout(self.timeout)
+		# self.sock.settimeout()
 		self.sock.listen()
 
 		print(f'HTTP Server listening on {self.addr}:{self.port}...')
 
 		try:
-			while self.sock:
+			while self.sock is not None:
 				client_connection, client = self.sock.accept()
 				http_connection = self.handle_connection(client_connection)
+				client_connection.shutdown(socket.SHUT_WR)
 				client_connection.close()
 				if callback:
 					callback(self, http_connection)
 		except KeyboardInterrupt:
-			self.sock.close()
-		except Exception:
-			traceback.print_exc(file=sys.stdout)
-		sys.exit(0)
+			self.stop()
+		except AssertionError as assertion_error:
+			self.stop()
+			raise assertion_error
 
 	def stop(self):
 		self.sock.close()

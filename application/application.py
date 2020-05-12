@@ -18,4 +18,4 @@ class Application():
 		return [content]
 
 	def run(self, environ):
-		return 'Hello, World!', HTTPStatus.OK
+		return b'Hello, World!', HTTPStatus.OK
