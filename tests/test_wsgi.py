@@ -1,12 +1,11 @@
 from http.client import HTTPConnection
-from wsgiref.validate import validator
 from multiprocessing import Process
 from time import sleep
 
 import pytest
 
 from .utils import TEST_ADDR, TEST_PORT
-from web_server.server import HttpServer
+from web_server.server import HttpServer, ServerInterrupt
 
 
 def simple_app(environ, start_response):
@@ -16,22 +15,25 @@ def simple_app(environ, start_response):
 
     return [b'Hello World']
 
+def server_callback(server, http_connection):
+	raise ServerInterrupt()
+
+def run_server_instance():
+	from wsgiref.validate import validator
+	validator_app = validator(simple_app)
+	server = HttpServer(TEST_ADDR, TEST_PORT, timeout=1, application=validator_app)
+
+	server.run(server_callback)
+	print('running')
+
 def test_wsgi():
 
 	has_assertion_error = False
 
 	try:
-		def run_server_instance(application):
-			server = HttpServer(TEST_ADDR, TEST_PORT, timeout=1, application=application)
-
-			def server_callback(server, http_connection):
-				server.stop()
-
-			server.run(server_callback)
-
-		validator_app = validator(simple_app)
-		server_process = Process(target=run_server_instance, args=(validator_app,))
+		server_process = Process(target=run_server_instance)
 		server_process.start()
+		print('huh')
 
 		connection = HTTPConnection(TEST_ADDR, TEST_PORT)
 		connection.request('GET', '/')

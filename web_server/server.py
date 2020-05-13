@@ -1,12 +1,20 @@
 import os, sys, traceback
-import socket
+import socket, multiprocessing
 from http import HTTPStatus
 from pathlib import Path
+import signal
 
 from .http_connection import HttpConnection
 from .resource import HttpResource
 
 ADDR, PORT = '127.0.0.1', 5000
+
+
+def init_worker():
+	signal.signal(signal.SIGINT, signal.SIG_IGN)
+
+class ServerInterrupt(Exception):
+	pass
 
 class HttpServer:
 
@@ -22,25 +30,48 @@ class HttpServer:
 		"""Starts the server"""
 
 		self.sock = socket.socket()
+		self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.sock.bind((self.addr, self.port))
 		# self.sock.settimeout()
 		self.sock.listen()
 
 		print(f'HTTP Server listening on {self.addr}:{self.port}...')
 
+		pool = multiprocessing.Pool(4, init_worker)
 		try:
 			while self.sock is not None:
 				client_connection, client = self.sock.accept()
-				http_connection = self.handle_connection(client_connection)
-				client_connection.shutdown(socket.SHUT_WR)
-				client_connection.close()
+				print('before accept')
+				output = pool.apply(self.run_once, args=(client_connection,))
+				if output:
+					print(output)
 				if callback:
 					callback(self, http_connection)
-		except KeyboardInterrupt:
-			self.stop()
-		except AssertionError as assertion_error:
+		except AssertionError:
+			traceback.print_exc(file=sys.stdout)
+			pool.terminate()
+			pool.join()
 			self.stop()
 			raise assertion_error
+		except (KeyboardInterrupt, ServerInterrupt):
+			pass
+		finally:
+			pool.terminate()
+			pool.close()
+			pool.join()
+			self.stop()
+		
+		print('\n\nStopping HTTP Server...')
+		sys.exit(0)
+
+	def run_once(self, client_connection):
+		try:
+			http_connection = self.handle_connection(client_connection)
+
+			client_connection.shutdown(socket.SHUT_WR)
+			client_connection.close()
+		except BaseException as error:
+			return f'{type(error)}: {error}'
 
 	def stop(self):
 		self.sock.close()
