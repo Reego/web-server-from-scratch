@@ -11,6 +11,7 @@ FILE_EXTENSION_TO_MIME = {
 }
 
 class HttpConnection:
+	"""Deals with parsing HTTP request and sending finalized response"""
 
 	def __init__(self, client_connection):
 

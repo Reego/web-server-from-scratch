@@ -7,18 +7,13 @@ import signal
 from .http_connection import HttpConnection
 from .resource import HttpResource
 
-ADDR, PORT = '127.0.0.1', 5000
-
-
-def init_worker():
-	signal.signal(signal.SIGINT, signal.SIG_IGN)
-
 class ServerInterrupt(Exception):
 	pass
 
 class HttpServer:
+	"""Serves HTTP server"""
 
-	def __init__(self, addr=ADDR, port=PORT, public_folder_path='/', timeout=5000, application=None):
+	def __init__(self, addr, port, public_folder_path='/', timeout=5000, application=None):
 		self.addr = addr
 		self.port = port
 		self.public_folder_path = public_folder_path
@@ -48,7 +43,6 @@ class HttpServer:
 				client_connection, client = self.sock.accept()
 				pool.apply_async(self.run_once, args=(client_connection,), callback=connection_handler_callback)
 		except AssertionError:
-			sys.stdout.write('c!')
 			traceback.print_exc(file=sys.stdout)
 			pool.terminate()
 			pool.join()
@@ -62,7 +56,7 @@ class HttpServer:
 			pool.join()
 			self.stop()
 		
-		print('\n\nStopping HTTP Server...')
+		print('\n\nStopping HTTP Server...\n\n')
 		sys.exit(0)
 
 	def run_once(self, client_connection):
@@ -85,9 +79,8 @@ class HttpServer:
 		self.sock.close()
 		self.sock = None
 		
-	# called in pool
 	def handle_connection(self, client_connection):
-		"""handles the socket connection"""
+		"""handles the socket connection by calling the application or retrieving resources"""
 
 		http_connection = HttpConnection(client_connection)
 
