@@ -98,6 +98,6 @@ class HttpConnection:
 		self.response_upper_text = f'HTTP/1.1 {status_phrase(self.status)}\n{headers_text}'	
 
 	def send(self, body):
-		http_response = f'{self.response_upper_text}\n{body}'.encode()
+		http_response = f'{self.response_upper_text}\n'.encode() + body
 
 		self.client_connection.sendall(http_response)

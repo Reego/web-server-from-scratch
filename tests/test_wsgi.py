@@ -2,29 +2,36 @@ from http.client import HTTPConnection
 from multiprocessing import Process
 from time import sleep
 
+import sys
+
 import pytest
 
-from .utils import TEST_ADDR, TEST_PORT
+from .utils import TEST_ADDR, TEST_PORT, TEST_TEXT
 from web_server.server import HttpServer, ServerInterrupt
 
+def simple_app(environm, start_response):
+	status = '200 OK'
+	headers = [('Content-type', 'text/plain')]
+	start_response(status, headers)
 
-def simple_app(environ, start_response):
-    status = '200 OK'
-    headers = [('Content-type', 'text/plain')]
-    start_response(status, headers)
+	return [TEST_TEXT.encode()]
 
-    return [b'Hello World']
+def exit_server(self, val):
+	raise ServerInterrupt()
 
-def server_callback(server, http_connection):
+def validator_simple_app(environ, start_response):
+	from wsgiref.validate import validator
+
+	validator_wrapped_app = validator(simple_app)
+
+	return validator_wrapped_app(environ, start_response)
+
+def server_callback(server, output):
 	raise ServerInterrupt()
 
 def run_server_instance():
-	from wsgiref.validate import validator
-	validator_app = validator(simple_app)
-	server = HttpServer(TEST_ADDR, TEST_PORT, timeout=1, application=validator_app)
-
+	server = HttpServer(TEST_ADDR, TEST_PORT, timeout=1, application=validator_simple_app)
 	server.run(server_callback)
-	print('running')
 
 def test_wsgi():
 
@@ -33,13 +40,15 @@ def test_wsgi():
 	try:
 		server_process = Process(target=run_server_instance)
 		server_process.start()
-		print('huh')
 
 		connection = HTTPConnection(TEST_ADDR, TEST_PORT)
 		connection.request('GET', '/')
-		connection.getresponse()
+		assert connection.getresponse().read() == TEST_TEXT.encode()
+
+		sleep(.1)
 		
-	except AssertionError:
+	except AssertionError as error:
+		print(error)
 		has_assertion_error = True
 	finally:
 		server_process.terminate()

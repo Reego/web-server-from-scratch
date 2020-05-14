@@ -37,17 +37,18 @@ class HttpServer:
 
 		print(f'HTTP Server listening on {self.addr}:{self.port}...')
 
-		pool = multiprocessing.Pool(4, init_worker)
+		pool = multiprocessing.Pool(4)
+
+		def connection_handler_callback(output):
+			if callback:
+				callback(self, output)
+
 		try:
 			while self.sock is not None:
 				client_connection, client = self.sock.accept()
-				print('before accept')
-				output = pool.apply(self.run_once, args=(client_connection,))
-				if output:
-					print(output)
-				if callback:
-					callback(self, http_connection)
+				pool.apply_async(self.run_once, args=(client_connection,), callback=connection_handler_callback)
 		except AssertionError:
+			sys.stdout.write('c!')
 			traceback.print_exc(file=sys.stdout)
 			pool.terminate()
 			pool.join()
@@ -65,13 +66,20 @@ class HttpServer:
 		sys.exit(0)
 
 	def run_once(self, client_connection):
+		error_message = ''
 		try:
 			http_connection = self.handle_connection(client_connection)
-
+		except AssertionError as error:
+			error_message = f'{type(error)}: {error}'
+			sys.stdout.write(error_message)
+			return error_message
+		except BaseException as error:
+			error_message = f'{type(error)}: {error}'
+			sys.stdout.write(error_message)
+		finally:
 			client_connection.shutdown(socket.SHUT_WR)
 			client_connection.close()
-		except BaseException as error:
-			return f'{type(error)}: {error}'
+		return error_message
 
 	def stop(self):
 		self.sock.close()
