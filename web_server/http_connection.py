@@ -11,6 +11,7 @@ FILE_EXTENSION_TO_MIME = {
 }
 
 class HttpConnection:
+	"""Deals with parsing HTTP request and sending finalized response"""
 
 	def __init__(self, client_connection):
 
@@ -98,6 +99,6 @@ class HttpConnection:
 		self.response_upper_text = f'HTTP/1.1 {status_phrase(self.status)}\n{headers_text}'	
 
 	def send(self, body):
-		http_response = f'{self.response_upper_text}\n{body}'.encode()
+		http_response = f'{self.response_upper_text}\n'.encode() + body
 
 		self.client_connection.sendall(http_response)

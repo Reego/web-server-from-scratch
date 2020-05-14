@@ -1,6 +1,7 @@
 from http.client import HTTPConnection
 
 import pytest
+import time
 
 from .utils import TEST_TEXT, TEST_FILE, TEST_ADDR, TEST_PORT, temp_resources, server_instance
 

@@ -33,7 +33,7 @@ class HttpResource:
 
 	def __init__(self, content='', ext=None):
 
-		self.content = content
+		self.content = content.encode()
 		self.mime = FILE_EXTENSION_TO_MIME.get(ext, 'text/html')
 		self.content_length = len(self.content)
 

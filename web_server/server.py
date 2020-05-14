@@ -1,16 +1,19 @@
 import os, sys, traceback
-import socket
+import socket, multiprocessing
 from http import HTTPStatus
 from pathlib import Path
+import signal
 
 from .http_connection import HttpConnection
 from .resource import HttpResource
 
-ADDR, PORT = '127.0.0.1', 5000
+class ServerInterrupt(Exception):
+	pass
 
 class HttpServer:
+	"""Serves HTTP server"""
 
-	def __init__(self, addr=ADDR, port=PORT, public_folder_path='/', timeout=5000, application=None):
+	def __init__(self, addr, port, public_folder_path='/', timeout=5000, application=None):
 		self.addr = addr
 		self.port = port
 		self.public_folder_path = public_folder_path
@@ -22,33 +25,62 @@ class HttpServer:
 		"""Starts the server"""
 
 		self.sock = socket.socket()
+		self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.sock.bind((self.addr, self.port))
 		# self.sock.settimeout()
 		self.sock.listen()
 
 		print(f'HTTP Server listening on {self.addr}:{self.port}...')
 
+		pool = multiprocessing.Pool(4)
+
+		def connection_handler_callback(output):
+			if callback:
+				callback(self, output)
+
 		try:
 			while self.sock is not None:
 				client_connection, client = self.sock.accept()
-				http_connection = self.handle_connection(client_connection)
-				client_connection.shutdown(socket.SHUT_WR)
-				client_connection.close()
-				if callback:
-					callback(self, http_connection)
-		except KeyboardInterrupt:
-			self.stop()
-		except AssertionError as assertion_error:
+				pool.apply_async(self.run_once, args=(client_connection,), callback=connection_handler_callback)
+		except AssertionError:
+			traceback.print_exc(file=sys.stdout)
+			pool.terminate()
+			pool.join()
 			self.stop()
 			raise assertion_error
+		except (KeyboardInterrupt, ServerInterrupt):
+			pass
+		finally:
+			pool.terminate()
+			pool.close()
+			pool.join()
+			self.stop()
+		
+		print('\n\nStopping HTTP Server...\n\n')
+		sys.exit(0)
+
+	def run_once(self, client_connection):
+		error_message = ''
+		try:
+			http_connection = self.handle_connection(client_connection)
+		except AssertionError as error:
+			error_message = f'{type(error)}: {error}'
+			sys.stdout.write(error_message)
+			return error_message
+		except BaseException as error:
+			error_message = f'{type(error)}: {error}'
+			sys.stdout.write(error_message)
+		finally:
+			client_connection.shutdown(socket.SHUT_WR)
+			client_connection.close()
+		return error_message
 
 	def stop(self):
 		self.sock.close()
 		self.sock = None
 		
-	# called in pool
 	def handle_connection(self, client_connection):
-		"""handles the socket connection"""
+		"""handles the socket connection by calling the application or retrieving resources"""
 
 		http_connection = HttpConnection(client_connection)
 
