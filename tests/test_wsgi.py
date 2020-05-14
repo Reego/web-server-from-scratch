@@ -1,7 +1,6 @@
 from http.client import HTTPConnection
 from multiprocessing import Process
 from time import sleep
-
 import sys
 
 import pytest
